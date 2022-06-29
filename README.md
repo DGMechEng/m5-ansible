@@ -12,3 +12,4 @@ password:
   - password2
 
 Any values should work (crosses fingers)
+Also, this probably takes unreasonably long to run.  Sorry, it has to do with the sort of kluged together way that I'm setting up my database (requires waiting for an EC2 instance to be fully up and running).
