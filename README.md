@@ -1,8 +1,13 @@
 # m5-ansible
 Module 5 ansible playbooks and supporting files
 
-This package will require a variable file with two usernames and two passwords:
+I was not able to communicate with my database, so my m5_server instance that is running was used to manually configure my database so that my web app can be evaluated.
 
+This package will require a variable file with two usernames and two passwords.  Usernames and passwords don't really matter since database setup isn't working.
+
+I've included a couple of files that aren't called out in the create_all.yaml file so that I can continue to work on these.
+
+Format for ../var-file.yaml:
 ---
 user:
   - user1
@@ -10,6 +15,6 @@ user:
 password:
   - password1
   - password2
+key:
+  - keyname
 
-Any values should work (crosses fingers)
-Also, this probably takes unreasonably long to run.  Sorry, it has to do with the sort of kluged together way that I'm setting up my database (requires waiting for an EC2 instance to be fully up and running).
