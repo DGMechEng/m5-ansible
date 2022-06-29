@@ -1,0 +1,57 @@
+---
+- hosts: localhost
+  gather_facts: no
+  module_defaults:
+    group/aws:
+      profile: auburn
+  vars_files:
+    - ../var-file.yaml
+  tasks:
+    - name: create subnet group
+      rds_subnet_group:
+        state: present
+        name: m5-sng
+        description: m5 subnet group for RDS instance
+        subnets:
+          - "{{ private_subnet_1.subnet.id }}"
+          - "{{ private_subnet_2.subnet.id }}"
+      register: sn_group
+    - name: create temporary db security group
+      ec2_group:
+        name: m5-temp-sg
+        description: allow access to db
+        vpc_id: "{{ vpc.vpc.id }}"
+        rules:
+          - proto: tcp
+            ports:
+              - 5432
+            cidr_ip: 0.0.0.0/0
+            rule_desc: allow all traffic into 5432
+      register: temp_group
+    - name: create rds instance
+      rds_instance:
+        db_name: m5DB
+        db_instance_identifier: m5-db-instance
+        engine: postgres
+        port: 5432
+        vpc_security_group_ids:
+          - "{{ temp_group.group_id }}"
+          - "{{ pgsg.group_id }}"
+        db_instance_class: db.t3.micro
+        allocated_storage: 20
+        master_username: "{{ user[0] }}"
+        master_user_password: "{{ password[0] }}"
+        subnet_group: "{{ sn_group.subnet_group.db_subnet_group_name }}"
+        wait: yes
+        tags:
+          Module: 5
+      register: mydb
+    - name: create db_id yaml file
+      set_fact:
+        mydict: {
+          'db_id':"{{ mydb.endpoint.address }}"
+          }
+    - name: copy db id to file
+      ansible.builtin.copy:
+        content: "{{ mydict | to_yaml }}"
+        dest: db_var.yaml

@@ -1,0 +1,60 @@
+---
+#- hosts: localhost
+#  gather_facts: no
+#  vars:
+#    ami_id: "ami-0ca285d4c2cda3300"
+#  vars_files:
+#    - ../var-file.yaml
+#  module_defaults:
+#    group/aws:
+#      profile: auburn
+#  tasks:
+#    - name: Provision ec2 instance
+#      ec2_instance:
+#        name: ec2_db_int
+#        state: terminated
+#        instance_type: t2.micro
+#        image_id: "{{ ami_id }}"
+#        key_name: "dg_auburn"
+#        network:
+#          assign_public_ip: yes
+#        security_groups:
+#          - "{{ m5pgtag.group_id }}"
+#          - "{{ sg_nginx.group_id }}"
+#        tags:
+#          Module: 5
+#        vpc_subnet_id: "{{ public_subnet1.subnet.id }}"
+#        wait: yes
+#        exact_count: 1
+#      register: ec2db
+#    - name: Provision ec2 instance
+#      ec2_instance:
+#        name: ec2_db_int
+#        state: started
+#        wait_timeout: 1200
+#        instance_type: t2.micro
+#        image_id: "{{ ami_id }}"
+#        key_name: "{{ key }}"
+#        network:
+#          assign_public_ip: yes
+#        security_groups:
+#          - "{{ m5pgtag.group_id }}"
+#          - "{{ sg_nginx.group_id }}"
+#        user_data: |
+#          #!/usr/bin/bash
+#          sudo yum update -y
+#          sudo yum install -y postgresql
+#          pip3 install psycopg2-binary
+#        tags:
+#          Module: 5
+
+#        vpc_subnet_id: "{{ public_subnet1.subnet.id }}"
+#        wait: yes
+#        exact_count: 1
+#      register: ec2db
+#    - name: create new host
+#      add_host:
+#        name: "{{ ec2db.instances[0].public_ip_address }}"
+#        ansible_user: ec2-user
+#        groups: database
+

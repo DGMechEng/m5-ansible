@@ -1,0 +1,46 @@
+---
+- hosts: localhost
+  gather_facts: yes
+  module_defaults:
+    group/aws:
+      profile: auburn
+  vars_files:
+    - ../var-file.yaml
+#  vars:
+#    user:
+#      - postgres
+#      - image_gallery
+#    password:
+#      - Aa$%_dtRi%%4590
+#      - B1k3@lld@yDG
+  tasks:
+    - name: create image_gallery secret
+      aws_secret:
+        name: 'm5-pswd-secret'
+        state: present
+        secret_type: 'string'
+        description: password
+        secret: " {\"username\":\"{{ user[1] }}\", \"password\":\"{{ password[1] }}\", \"host\":\"{{ mydb.endpoint.address }}\"}"
+      register: m5secret
+    - name: Create access policy for m5 secret
+      iam_managed_policy:
+        policy_name: "m5-secrets-policy"
+        policy:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Action: "secretsmanager:GetSecretValue"
+              Resource: "{{ m5secret.secret.arn }}"
+      register: m5secpolicy
+    - name: Create role for autoscale instances
+      iam_role:
+        name: m5-autoscaling-instance-role
+        wait: yes
+        state: present
+        assume_role_policy_document: "{{ lookup('file', 'policy.json') }}"
+        managed_policies:
+          - arn:aws:iam::462077838954:policy/image-gallery-configure-policy
+          - arn:aws:iam::462077838954:policy/S3-image-access
+          - "{{ m5secpolicy.policy.arn }}"
+      register: m5autoscalingrole
+      

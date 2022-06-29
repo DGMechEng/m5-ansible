@@ -1,0 +1,88 @@
+---
+- hosts: localhost
+  gather_facts: yes
+  module_defaults:
+    group/aws:
+      profile: auburn
+  tasks:
+    - name: Create Launch Template
+      ec2_launch_template:
+        template_name: "m5-lt"
+        image_id: "ami-0ca285d4c2cda3300"
+        instance_type: t2.micro
+        tags:
+          Name: m5_server
+          Module: 5
+        state: present
+        network_interfaces:
+          - device_index: 0
+            associate_public_ip_address: yes
+            groups:
+              - "{{ sg_nginx.group_id }}"
+              - "{{ m5pgtag.group_id }}"
+        user_data: "{{ lookup('file', 'user_64.sh') }}"
+        iam_instance_profile: "{{ m5autoscalingrole.iam_role.role_name }}"
+      register: m5lt
+    - name: Create target group
+      elb_target_group:
+        name: m5-tg
+        protocol: tcp
+        port: 80
+        vpc_id: "{{ vpc.vpc.id }}"
+        state: present
+      register: m5tg
+    - name: Create network load balancer
+      elb_network_lb:
+        name: m5-nlb
+        state: present
+        subnets:
+          - "{{ public_subnet1.subnet.id }}"
+          - "{{ public_subnet2.subnet.id }}"
+        listeners:
+          - Protocol: TCP
+            Port: 80
+            DefaultActions:
+              - Type: forward
+                TargetGroupName: "{{ m5tg.target_group_name }}"
+          - Protocol: TLS
+            Port: 443
+            DefaultActions:
+              - Type: forward
+                TargetGroupName: "{{ m5tg.target_group_name }}"
+            Certificates:
+              - CertificateArn: arn:aws:acm:us-west-2:462077838954:certificate/1dbd0fa0-c197-47da-a931-20257ab31c1f
+            SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      register: m5nlb
+    - name: Create Route53 record
+      route53:
+        state: present
+        type: A
+        zone: danvgunter.click
+        record: www.danvgunter.click
+        value: "{{ m5nlb.dns_name }}"
+        alias: True
+        alias_hosted_zone_id: "{{ m5nlb.canonical_hosted_zone_id }}"
+        overwrite: yes
+      register: r53Record
+    - name: debug route53
+      debug: var=r53Record
+    - name: Create autoscaling group
+      ec2_asg:
+        vpc_zone_identifier:
+          - "{{ public_subnet1.subnet.id }}"
+          - "{{ public_subnet2.subnet.id }}"
+        desired_capacity: 1
+        health_check_type: ELB
+        launch_template:
+          launch_template_name: "m5-lt"
+        max_size: 4
+        min_size: 1
+        name: m5_asg
+        max_instance_lifetime: 0
+        target_group_arns:
+          - "{{ m5tg.target_group_arn }}"
+        state: present
+        tags:
+          - Module: 5
+          - Instance_name: m5_ec2
+        

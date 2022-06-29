@@ -1,0 +1,58 @@
+---
+#- hosts: database
+#  gather_facts: 
+#  module_defaults:
+#    group/aws:
+#      profile: auburn
+#  vars_files:
+#    - ../var-file.yaml
+#    - db_var.yaml
+#  tasks:
+#    - name: create new sql user
+#      postgresql_user:
+#        login_user: "{{ user[0] }}"
+#        login_password: "{{ user[1] }}"
+#        db: "{{ db_id }}"
+#        name: "{{ user[1] }}"
+#        password: "{{ password[1] }}"
+#    - name: run SQL query to create new user
+#      postgresql_query:
+#        db: "{{ user[0] }}"
+#        login_host: "{{ db_id }}"
+#        login_user: "{{ user[0] }}"
+#        login_password: "{{ password[0] }}"
+#        path_to_script: test.sql
+#        query: create user %(user_val)s password %(pswd_val)s
+#        named_args:
+#          user_val: "{{ user[1] | replace(''','') }}"
+#          pswd_val: "{{ password[1] }}"
+#    - name: give master user privileges of new user
+#      postgresql_query:
+#        db: "{{ db_id }}"
+#        login_user: '{{ user[0] }}'
+#        login_password: '{{ password[0] }}'
+#        query: grant %s to  %s
+#        positional_args:
+#          - '{{ user[1] }}'
+#          - '{{ user[0] }}'
+#    - name: create database image_gallery
+#      postgresql_query:
+#        db: "{{ db_id }}"
+#        login_user: "{{ user[0] }}"
+#        login_password: "{{ password[0] }}"
+#        query: create database %s owner %s
+#        positional_args:
+#          - '{{ user[1] }}'
+#          - '{{ user[1] }}'
+#    - name: create users table
+#      postgresql_query:
+#        db: "{{ db_id }}"
+#        login_user: "{{ user[1] }}"
+#        login_password: "{{ password[1] }}"
+#        query: create table users (username varchar(100) primary key, password varchar(100), full_name varchar(200), admin varchar(8) constraint ck_admin check(admin='admin' OR admin='notadmin'))
+#    - name: create users table
+#      postgresql_query:
+#        db: "{{ db_id }}"
+#        login_user: "{{ user[1] }}"
+#        login_password: "{{ password[1] }}"
+#        query: create table images (username varchar(100), image_key varchar(40) primary key, foreign key (username) references users(username))

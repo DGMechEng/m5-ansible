@@ -1,0 +1,123 @@
+---
+- hosts: localhost
+  gather_facts: no
+  module_defaults:
+    group/aws:
+      profile: auburn
+  tasks:
+    - name: Create VPC
+      ec2_vpc_net:
+        name: Module5
+        cidr_block: 10.3.0.0/16
+        tags:
+          Module: 5
+        state: present
+      register: vpc
+    - name: Create public subnet
+      ec2_vpc_subnet:
+        vpc_id: "{{ vpc.vpc.id }}"
+        tags:
+          Name: Module5 public 1
+          Module: 5
+        cidr: 10.3.0.0/24
+        az: us-west-2a
+        state: present
+        map_public: yes
+      register: public_subnet1
+    - name: Create public subnet
+      ec2_vpc_subnet:
+        vpc_id: "{{ vpc.vpc.id }}"
+        tags:
+          Name: Module5 public 2
+          Module: 5
+        cidr: 10.3.3.0/24
+        az: us-west-2b
+        state: present
+        map_public: yes
+      register: public_subnet2
+    - name: Create private subnet
+      ec2_vpc_subnet:
+        vpc_id: "{{ vpc.vpc.id }}"
+        az: us-west-2a
+        tags:
+          Name: Module5 private sn1
+          Module: 5
+        cidr: 10.3.1.0/24
+        state: present
+      register: private_subnet_1
+    - name: Create private subnet
+      ec2_vpc_subnet:
+        vpc_id: "{{ vpc.vpc.id }}"
+        az: us-west-2b
+        tags:
+          Name: Module5 private sn2
+          Module: 5
+        cidr: 10.3.2.0/24
+        state: present
+      register: private_subnet_2
+    - name: Create internet gateway
+      ec2_vpc_igw:
+        vpc_id: "{{ vpc.vpc.id }}"
+        tags:
+          Name: Module5 gateway
+          Module: 5
+        state: present
+      register: igw
+    - name: Create nat gateway
+      ec2_vpc_nat_gateway:
+        if_exist_do_not_create: yes
+        state: present
+        subnet_id: "{{ public_subnet1.subnet.id }}"
+        wait: yes
+      register: nat_gateway
+    - name: Create public route table
+      ec2_vpc_route_table:
+        vpc_id: "{{ vpc.vpc.id }}"
+        tags:
+          Name: Module5Public
+        subnets:
+          - "{{ public_subnet1.subnet.id }}"
+          - "{{ public_subnet2.subnet.id }}"
+        routes:
+          - dest: "{{vpc.vpc.cidr_block }}"
+            gateway_id: local
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ igw.gateway_id }}"
+        state: present
+      register: rtbpub
+    - name: create private route table
+      ec2_vpc_route_table:
+        vpc_id: "{{ vpc.vpc.id }}"
+        tags:
+          Name: Module5Private
+        subnets:
+          - "{{ private_subnet_1.subnet.id }}"
+          - "{{ private_subnet_2.subnet.id }}"
+        routes:
+          - dest: "{{vpc.vpc.cidr_block }}"
+            gateway_id: local
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ nat_gateway.nat_gateway_id }}"
+        state: present
+      register: rtbpriv
+    - name: Create public ACL
+      ec2_vpc_nacl:
+        name: m5-public-acl
+        vpc_id: "{{ vpc.vpc.id }}"
+        subnets:
+          - "{{ public_subnet1.subnet.id }}"
+          - "{{ public_subnet2.subnet.id }}"          
+        tags:
+          Name: m5-acl
+          Module: 5
+        ingress:
+          - [100, 'tcp', 'allow', '38.80.148.0/24', null, null, 5000, 5000]
+          - [200, 'tcp', 'allow', '0.0.0.0/0', null, null, 22, 22]
+          - [300, 'tcp', 'allow', '0.0.0.0/0', null, null, 1024, 65535]
+          - [400, 'tcp', 'allow', '38.80.148.0/24', null, null, 5555, 5555]
+          - [500, 'tcp', 'allow', '0.0.0.0/0', null, null, 80, 80]
+        egress:
+          - [100, 'tcp', 'allow', '0.0.0.0/0', null, null, 1024, 65535]
+          - [200, 'tcp', 'allow', '0.0.0.0/0', null, null, 80, 80]
+          - [300, 'tcp', 'allow', '0.0.0.0/0', null, null, 443, 443]
+          - [400, 'tcp', 'allow', '0.0.0.0/0', null, null, 22, 22]
